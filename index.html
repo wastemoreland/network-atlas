@@ -633,7 +633,7 @@ table.econTable tr.erow.sel{background:rgba(31,186,214,.12)}
           <ol>
             <li>Enable <code>Network Atlas: Interactive Map &amp; Stats</code> and load your game.</li>
             <li>Click <code>Export map → Export map data</code> in the top-left mod buttons.</li>
-            <li>The file is written to <code>&lt;userdata&gt;/network_atlas/network_atlas_export.lua</code> — drop it here.</li>
+            <li>The file is written to <code>&lt;userdata&gt;/network_atlas_exports/network_atlas_export.lua</code> — drop it here.</li>
           </ol>
         </div>
       </div>
@@ -1471,18 +1471,6 @@ function prepareLines(rawLines) {
           stopIndex: numOrNull(x.stopIndex),
           cargoTypeId: numOrNull(x.cargoTypeId),
           cargoName: (typeof x.cargoName === "string" && x.cargoName) ? x.cargoName : null,
-        };
-      }),
-      cargoInfo: prepList(l.cargoInfo, c => {
-        if (!c || typeof c !== "object") return null;
-        return {
-          cargoTypeId: numOrNull(c.cargoTypeId),
-          name: (typeof c.name === "string" && c.name) ? c.name : null,
-          frequency: numOrNull(c.frequency),
-          numVehicles: numOrNull(c.numVehicles),
-          totalCapacity: numOrNull(c.totalCapacity),
-          comfortFactor: numOrNull(c.comfortFactor),
-          priceFactor: numOrNull(c.priceFactor),
         };
       }),
       throughput: numOrNull(l.throughput),
@@ -2863,12 +2851,12 @@ function loadRouteColor(l) {
   return v < 40 ? LOAD_RAMP.low : v <= 85 ? LOAD_RAMP.ok : LOAD_RAMP.high;
 }
 function dominantCargo(l) {
-  const list = l.cargoInfo;
+  const list = l.capacity;
   if (!list || !list.length) return null;
-  let best = list[0];
-  for (let i = 1; i < list.length; i++) {
-    const a = list[i].totalCapacity, b = best.totalCapacity;
-    if (a != null && (b == null || a > b)) best = list[i];
+  let best = null;
+  for (const c of list) {
+    if (c.capacity == null) continue;
+    if (!best || c.capacity > best.capacity) best = c;
   }
   return best;
 }

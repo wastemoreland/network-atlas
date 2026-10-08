@@ -50,7 +50,7 @@ You do not need the game to open an existing export. Open `index.html` directly 
 
 1. Enable **Network Atlas: Interactive Map & Stats** for the save and load the game.
 2. Open **Export map** in the top-left mod button area and choose **Export map data**.
-3. The mod writes `network_atlas_export.lua` in the game's userdata folder under `network_atlas`.
+3. The mod writes `network_atlas_export.lua` in the game's userdata folder under `network_atlas_exports`.
 4. Open `index.html` in a browser and upload `network_atlas_export.lua` (or drag and drop it onto the window).
 
 The export contains terrain height samples, world bounds, road segments, track segments, towns, industries, a `lines` collection and an optional `econ` block of cargo flows.
@@ -99,7 +99,6 @@ Lines are the current player's lines from `api.engine.system.lineSystem.getLines
 | `computedPath` | Ordered world points with the same shape as `path`: every stop centre in stop order with a **computed** route between consecutive stops — the game's own pathfinder (`api.engine.util.pathfinding.findPath`) run once per stop pair at export time, then replayed against the network geometry exactly the way a stored `path` is (`getComponent(edgeId.entity, TRANSPORT_NETWORK)` → `edges[edgeId.index + 1]` → `api.engine.util.transport.calcPosition`, one sample every 20 m with at most 16 steps per edge so a long edge is covered coarsely but never partially, rounded to 2 decimals, consecutive duplicates dropped). Nothing in it is read from the save; see *Computed routes* below for when it is written and when it is dropped. |
 | `computedPathSource` | The literal string `pathfinder`, written exactly when `computedPath` is. The provenance marker: a reader never has to guess whether a shape came from the save or was computed during this export. |
 | `capacity` | Per cargo type: `cargoTypeId`, `name`, `used`, `capacity` from `getLineCapacityUsages(line, false)` — the same call the game uses for the line's capacity display (`false` = the vehicle's current load configuration). |
-| `cargoInfo` | Per configured cargo type: `cargoTypeId`, `name`, `frequency` (Hz as returned), `numVehicles`, `totalCapacity`, `comfortFactor`, `priceFactor` from `api.engine.system.transportVehicleSystem.getLineCargoInfo(line, cargoTypeId)` — read for each cargo id the `capacity` block already found, so a cargo the line does not run is never asked about. Omitted when the game reports none. |
 | `throughput` | `calcLineStationThroughput(line)`. |
 | `maxFrequency` | `getMaxFrequency(line)`, in cycles per second as returned by the game. |
 | `issues` | `getLineIssues(line, false)`: `type` (e.g. `NowhereToLoad`), `stopIndex`, `cargoTypeId`, `cargoName`. |
@@ -194,6 +193,7 @@ Each flow carries `from` (industry entity id), `to` (town or industry entity id)
 
 ### Not exported (and why)
 
+- **Per-cargo line info (`cargoInfo`).** `api.engine.system.transportVehicleSystem.getLineCargoInfo(line, cargoTypeId)` was dropped because it could trigger a hard engine assertion — `Fatal error: cargoType < m_systemData->cargo2line2info.size()`, in `ecs::TransportVehicleSystem::GetLineCargoInfo`. A native assertion aborts the process and cannot be caught with `pcall`, and no API exposes the bound the engine checks, so no cargo type can be proven safe to ask about. The viewer colours routes by their dominant cargo using the safe `capacity` block instead.
 - **Passenger origin/destination arcs.** `getSourceToDestinationCount` needs a complete `destinationIsTownMap` that can only be built by replicating the game's own person-destination enumeration; with an incomplete map the counts would be wrong. Left out rather than guessed.
 - **Town happiness and growth statistics** (`getTownExperience`, development state): no API verified that reports them per town entity.
 - **Traffic speed / congestion map**: out of scope for this export and far larger than the whole budget allows.
@@ -203,7 +203,7 @@ Each flow carries `from` (industry entity id), `to` (town or industry entity id)
 
 - The export format identifier is `network-atlas-map-v1`. It was renamed together with the mod; exports written by the former **Map Overview** build (`north-map-overview-map-v1`) are **not** accepted by this viewer and must be re-exported.
 - Within the same identifier the format is additive: a key the game reports nothing for is omitted, so newer exports remain readable by older viewers of the same format, and the viewer always refuses unknown identifiers rather than guessing.
-- Rebranding changed the internal mod id to `network_atlas`, the export folder to `<userdata>/network_atlas` and the export file to `network_atlas_export.lua`. Existing saves keep working; only the export path and format identifier changed.
+- Rebranding changed the internal mod id to `network_atlas`, the export folder to `<userdata>/network_atlas_exports` and the export file to `network_atlas_export.lua`. Existing saves keep working; only the export path and format identifier changed.
 
 ## Project structure
 

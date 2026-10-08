@@ -2,7 +2,7 @@ local react = ug_require "::/gui/main/react.lua" as React
 local builtin = ug_require "::/gui/main/builtin.lua" as Builtin
 local main_mod_button_area = ug_require "::/gui/main/main_mod_button_area.tl" as MainModButtonArea
 
-local exportDirectory = "network_atlas"
+local exportDirectory = "network_atlas_exports"
 local exportFileName = "network_atlas_export"
 
 --- Upper bound of the exported origin/destination cargo flows. The largest
@@ -155,18 +155,6 @@ local record ExportFlow
 	volume : integer
 end
 
---- Cargo and vehicle figures the game reports for one line and one cargo type.
-local record ExportLineCargo
-	cargoTypeId : CargoTypeId
-	name : string
-	--- scheduled frequency of that cargo on the line, in Hz
-	frequency : number
-	numVehicles : integer
-	totalCapacity : integer
-	comfortFactor : number
-	priceFactor : number
-end
-
 --- Land use capacity of one town district.
 local record ExportLandUse
 	--- "RESIDENTIAL", "COMMERCIAL" or "INDUSTRIAL"
@@ -265,8 +253,6 @@ local record ExportLine
 	--- when `computedPath` is, so the two always travel together.
 	computedPathSource : string
 	capacity : {ExportCapacity}
-	--- Figures reported for this line per configured cargo type
-	cargoInfo : {ExportLineCargo}
 	throughput : integer
 	maxFrequency : number
 	issues : {ExportIssue}
@@ -1234,52 +1220,6 @@ local buildLine = function(lineEntity : Engine.Entity) : ExportLine
 			end
 		end
 		row.capacity = capacityRows
-	end
-
-	-- Figures the game reports for this line per configured cargo type. The
-	-- cargo ids are the ones the capacity block already found, so a cargo the
-	-- line does not run is never asked about.
-	local infoRows : {ExportLineCargo} = {}
-	local infoCargoTypeIds : {CargoTypeId} = {}
-	if capacities then
-		for cargoTypeId in pairs(capacities) do
-			table.insert(infoCargoTypeIds, cargoTypeId)
-		end
-		table.sort(infoCargoTypeIds)
-	end
-	for _, cargoTypeId in ipairs(infoCargoTypeIds) do
-		local info : LineCargoInfo = nil
-		pcall(function()
-			info = api.engine.system.transportVehicleSystem.getLineCargoInfo(lineEntity, cargoTypeId)
-		end)
-		if info then
-			local entry : ExportLineCargo = {
-				cargoTypeId = cargoTypeId,
-			}
-			local cargoName : string = cargoTypeName(cargoTypeId)
-			if cargoName then
-				entry.name = cargoName
-			end
-			if info.frequency then
-				entry.frequency = info.frequency
-			end
-			if info.numVehicles then
-				entry.numVehicles = info.numVehicles
-			end
-			if info.totalCapacity then
-				entry.totalCapacity = info.totalCapacity
-			end
-			if info.comfortFactor then
-				entry.comfortFactor = info.comfortFactor
-			end
-			if info.priceFactor then
-				entry.priceFactor = info.priceFactor
-			end
-			table.insert(infoRows, entry)
-		end
-	end
-	if #infoRows > 0 then
-		row.cargoInfo = infoRows
 	end
 
 	local throughput : integer = nil
