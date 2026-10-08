@@ -1,0 +1,14 @@
+# OS and editor junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*~
+
+# Editors / IDEs
+.vscode/
+.idea/
+
+# Local export artifacts (written to the game's userdata, ignored here if copied in)
+network_atlas_export.lua
+*.zip

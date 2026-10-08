@@ -1,0 +1,10 @@
+{
+  "authors": [
+    { "name": "North", "role": "CREATOR" }
+  ],
+  "description": "Explore your Transport Fever 3 saves outside the game. Export your map to an interactive browser view in 2D or 3D, inspect railways, roads, cities and industries, trace connections and dig into the numbers behind your network: economic stats, cargo flows, production chains and city growth.",
+  "name": "Network Atlas: Interactive Map & Stats",
+  "summary": "Export your world to an interactive 2D/3D map with network stats and charts.",
+  "tags": [ "Script Mod" ],
+  "url": ""
+}
