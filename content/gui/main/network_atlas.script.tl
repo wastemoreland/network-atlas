@@ -2,8 +2,16 @@ local react = ug_require "::/gui/main/react.lua" as React
 local builtin = ug_require "::/gui/main/builtin.lua" as Builtin
 local main_mod_button_area = ug_require "::/gui/main/main_mod_button_area.tl" as MainModButtonArea
 
-local exportDirectory = "network_atlas_exports"
-local exportFileName = "network_atlas_export"
+--- TPF3 refuses to write userdata into a folder whose name is derived from the
+--- current mod id ("The directory you trying to access is not available or
+--- invalid"). Try the branded names first, then the exact folder/file names
+--- this mod used before the rebrand, which are known to work on this save. The
+--- first one the engine accepts is kept and reported in the status line.
+local exportCandidates = {
+	{ directory = "atlas_exports", fileName = "atlas_export" },
+	{ directory = "network_atlas_exports", fileName = "network_atlas_export" },
+	{ directory = "north_map_overview", fileName = "map_export" },
+}
 
 --- Upper bound of the exported origin/destination cargo flows. The largest
 --- volumes are kept and the number of flows found is reported separately, so a
@@ -1812,7 +1820,7 @@ local NetworkAtlasPlugin = react.RegisterPluginRecipe(
 		local openState = react.useState(false)
 		local statusState = react.useState("Ready to export")
 
-		local writeExport = function() : string
+		local writeExport = function() : string, string, string
 			local map = api.engine.terrain.makeMapFromGame(true, true, true, true)
 			local bounds = api.engine.terrain.getBoundingBox()
 			local roads = {}
@@ -1901,15 +1909,33 @@ local NetworkAtlasPlugin = react.RegisterPluginRecipe(
 				econ = econ,
 			}
 
-			app.saveUserdata(exportDirectory, exportFileName, exportData)
-			return tostring(#roads) .. " roads, " .. tostring(#rails) .. " rails and " .. tostring(#lines) .. " lines"
+			local usedDirectory : string = nil
+			local usedFileName : string = nil
+			local lastError : string = nil
+			for _, candidate in ipairs(exportCandidates) do
+				local saved, err = pcall(function()
+					app.saveUserdata(candidate.directory, candidate.fileName, exportData)
+				end)
+				if saved then
+					usedDirectory = candidate.directory
+					usedFileName = candidate.fileName
+					print("[network_atlas] saveUserdata ok: " .. candidate.directory .. "/" .. candidate.fileName)
+					break
+				end
+				lastError = tostring(err)
+				print("[network_atlas] saveUserdata FAIL " .. candidate.directory .. "/" .. candidate.fileName .. ": " .. tostring(err))
+			end
+			if not usedDirectory then
+				error("could not write userdata: " .. tostring(lastError))
+			end
+			return tostring(#roads) .. " roads, " .. tostring(#rails) .. " rails and " .. tostring(#lines) .. " lines", usedDirectory, usedFileName
 		end
 
 		local exportMap = function()
 			statusState:set("Building map export...")
-			local ok, result = pcall(writeExport)
+			local ok, result, usedDirectory, usedFileName = pcall(writeExport)
 			if ok then
-				statusState:set("Exported " .. tostring(result) .. ". File: " .. app.getUserDataFolder() .. "/" .. exportDirectory .. "/" .. exportFileName .. ".lua")
+				statusState:set("Exported " .. tostring(result) .. ". File: " .. app.getUserDataFolder() .. tostring(usedDirectory) .. "/" .. tostring(usedFileName) .. ".lua")
 			else
 				statusState:set("Export failed: " .. tostring(result))
 			end

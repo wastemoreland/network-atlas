@@ -50,7 +50,7 @@ You do not need the game to open an existing export. Open `index.html` directly 
 
 1. Enable **Network Atlas: Interactive Map & Stats** for the save and load the game.
 2. Open **Export map** in the top-left mod button area and choose **Export map data**.
-3. The mod writes `network_atlas_export.lua` in the game's userdata folder under `network_atlas_exports`.
+3. The mod writes the export into the game's userdata folder; the status line shows the exact file path. Drop that `.lua` file here.
 4. Open `index.html` in a browser and upload `network_atlas_export.lua` (or drag and drop it onto the window).
 
 The export contains terrain height samples, world bounds, road segments, track segments, towns, industries, a `lines` collection and an optional `econ` block of cargo flows.
@@ -203,7 +203,7 @@ Each flow carries `from` (industry entity id), `to` (town or industry entity id)
 
 - The export format identifier is `network-atlas-map-v1`. It was renamed together with the mod; exports written by the former **Map Overview** build (`north-map-overview-map-v1`) are **not** accepted by this viewer and must be re-exported.
 - Within the same identifier the format is additive: a key the game reports nothing for is omitted, so newer exports remain readable by older viewers of the same format, and the viewer always refuses unknown identifiers rather than guessing.
-- Rebranding changed the internal mod id to `network_atlas`, the export folder to `<userdata>/network_atlas_exports` and the export file to `network_atlas_export.lua`. Existing saves keep working; only the export path and format identifier changed.
+- Rebranding changed the internal mod id to `network_atlas` and the export format identifier to `network-atlas-map-v1`. The export is written under a folder in the game's userdata directory (`atlas_exports` by default; older exports used `north_map_overview`) and the status line always shows the exact path. Existing saves keep working.
 
 ## Project structure
 
