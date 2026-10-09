@@ -1922,7 +1922,12 @@ local NetworkAtlasPlugin = react.RegisterPluginRecipe(
 			statusState:set("Building map export...")
 			local ok, result, usedDirectory, usedFileName = pcall(writeExport)
 			if ok then
-				statusState:set("Exported " .. tostring(result) .. ". File: " .. app.getUserDataFolder() .. tostring(usedDirectory) .. "/" .. tostring(usedFileName) .. ".lua")
+				local userDataFolder = app.getUserDataFolder()
+				local lastChar = string.sub(userDataFolder, -1)
+				if lastChar ~= "/" and lastChar ~= "\\" then
+					userDataFolder = userDataFolder .. "/"
+				end
+				statusState:set("Exported " .. tostring(result) .. ". File: " .. userDataFolder .. tostring(usedDirectory) .. "/" .. tostring(usedFileName) .. ".lua")
 			else
 				statusState:set("Export failed: " .. tostring(result))
 			end

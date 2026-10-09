@@ -12,3 +12,6 @@ Desktop.ini
 # Local export artifacts (written to the game's userdata, ignored here if copied in)
 network_atlas_export.lua
 *.zip
+
+# Local working notes, not part of the published repo
+code_review.md

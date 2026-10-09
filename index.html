@@ -292,7 +292,6 @@ table.econTable tr.erow.sel{background:rgba(31,186,214,.12)}
           <button class="swatch" data-style="network"><i></i><b>Network</b></button>
           <button class="swatch" data-style="terrain"><i></i><b>Terrain</b></button>
           <button class="swatch" data-style="grayscale"><i></i><b>Grayscale</b></button>
-          <button class="swatch" data-style="heat"><i></i><b>Heat</b></button>
           <button class="swatch" data-style="custom"><i></i><b>Custom</b></button>
         </div>
         <div class="hint-txt">One click gives you a complete look. Change any colour or width below and the map keeps that preset's palette as <b>Custom</b>.</div>
@@ -332,7 +331,6 @@ table.econTable tr.erow.sel{background:rgba(31,186,214,.12)}
         <div class="row"><label>Hillshade strength</label><input type="range" data-set="hillshadeStrength" min="0" max="1.5" step="0.05"><span class="val" data-out="hillshadeStrength"></span></div>
         <div class="row"><label>Sun azimuth</label><input type="range" data-set="sunAzimuth" min="0" max="360" step="5"><span class="val" data-out="sunAzimuth"></span></div>
         <div class="row"><label>Sun elevation</label><input type="range" data-set="sunElevation" min="5" max="89" step="1"><span class="val" data-out="sunElevation"></span></div>
-        <div class="row"><label>Relief exaggeration</label><input type="range" data-set="exaggeration" min="1" max="8" step="0.5"><span class="val" data-out="exaggeration"></span></div>
         <label class="chk"><input type="checkbox" data-set="elevAuto"> Automatic elevation range</label>
         <div class="grid2">
           <div class="row"><label>Min (m)</label><input type="number" id="elevMin" data-set="elevMin" step="5"></div>
@@ -492,11 +490,19 @@ table.econTable tr.erow.sel{background:rgba(31,186,214,.12)}
         <div class="btnrow">
           <button class="btn small" data-icon="crosshair" id="fitBtn">Fit map</button>
           <button class="btn small" data-icon="image" id="pngView">Save view PNG</button>
-          <button class="btn small" data-icon="image" id="pngFull">Save full map PNG</button>
+          <button class="btn small" data-icon="image" id="pngFull">Save full 2D map</button>
         </div>
         <div class="row"><label>Full map width</label>
           <select data-set="exportSize"><option value="1024">1024 px</option><option value="2048">2048 px</option><option value="4096">4096 px</option></select>
         </div>
+        <div class="row"><label>3D camera</label></div>
+        <div class="btnrow">
+          <button class="btn small" data-cam="iso" title="Isometric — 45° rotation, 35° tilt">Isometric</button>
+          <button class="btn small" data-cam="p15" title="Isometric, 15° tilt">15°</button>
+          <button class="btn small" data-cam="p45" title="Isometric, 45° tilt">45°</button>
+          <button class="btn small" data-cam="p60" title="Isometric, 60° tilt">60°</button>
+        </div>
+        <div class="hint-txt">Every preset keeps the isometric rotation and changes the tilt. <b>Save view PNG</b> exports the live 3D relief; <b>Save full 2D map</b> always renders the whole map flat and north-up.</div>
         <div class="btnrow"><button class="btn small" data-icon="undo" id="resetSettings">Reset all settings</button></div>
         <div class="hint-txt">Drag &amp; drop a <code>network_atlas_export.lua</code> onto the window at any time to load another map.</div>
       </div>
@@ -652,6 +658,9 @@ table.econTable tr.erow.sel{background:rgba(31,186,214,.12)}
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+/* Extra lineWidth added to a casing stroke so the outline is a constant 2 px on
+   each side of the fill, independent of the (scaled) fill width. */
+const CASING_OUTLINE = 4;
 const fmt = (n, d = 0) => Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 const fmtMax = (n, d = 3) => Number(n).toLocaleString(undefined, { maximumFractionDigits: d });
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -730,7 +739,7 @@ const STYLES = {
     bg: "#e9e4d5",
     ramp: ["#cbdfae", "#e3e5b6", "#f2e8c9", "#eeddc0", "#e3cdb4", "#d9c3aa", "#ffffff"],
     water: ["#a9cbe6", "#74aad3"], contour: "#6b6248",
-    paint: { townLabel: "#3d4856", townFont: "700 13px system-ui", halo: "rgba(252,250,244,.95)", casing: "rgba(96,102,112,.4)" },
+    paint: { lineHalo: "rgba(16,21,28,.85)", townLabel: "#3d4856", townFont: "700 13px system-ui", halo: "rgba(252,250,244,.95)", casing: "rgba(96,102,112,.4)" },
     apply: { terrainOpacity: 1, roadColorMode: "class", roadWidth: 1.8, roadCasing: true, townLabels: true, indLabels: false, contourWidth: 1, layers: { contours: false, grid: false } },
   },
   minimal: {
@@ -738,7 +747,7 @@ const STYLES = {
     bg: "#eef1f0",
     ramp: ["#dde7da", "#e5ecdf", "#ebeee7", "#f0efe9", "#f3f1ec", "#f6f4f0", "#ffffff"],
     water: ["#a9cbe9", "#7fb0dd"], contour: "#d7dedb",
-    paint: { townLabel: "#37414d", townFont: "650 12.5px system-ui", halo: "rgba(255,255,255,.95)", casing: "rgba(74,84,96,.45)" },
+    paint: { lineHalo: "rgba(16,21,28,.85)", townLabel: "#37414d", townFont: "650 12.5px system-ui", halo: "rgba(255,255,255,.95)", casing: "rgba(74,84,96,.45)" },
     apply: { terrainOpacity: 1, roadColorMode: "single", roadColor: "#ffffff", roadWidth: 1.9, roadCasing: true, townLabels: true, indLabels: false, contourWidth: 1, layers: { contours: false, grid: false } },
   },
   topo: {
@@ -746,7 +755,7 @@ const STYLES = {
     bg: "#efe7d0",
     ramp: ["#a9cc8b", "#c9dd9d", "#e5e3ad", "#eedba2", "#e6c98b", "#dab779", "#fbf7ee"],
     water: ["#8ec6ea", "#4f94c8"], contour: "#9a6b3f",
-    paint: { townLabel: "#4a3b25", townFont: "700 12.5px system-ui", halo: "rgba(250,246,234,.95)", casing: "rgba(92,70,40,.45)" },
+    paint: { lineHalo: "rgba(16,21,28,.85)", townLabel: "#4a3b25", townFont: "700 12.5px system-ui", halo: "rgba(250,246,234,.95)", casing: "rgba(92,70,40,.45)" },
     apply: { terrainOpacity: 1, roadColorMode: "class", roadWidth: 1.8, roadCasing: true, townLabels: true, indLabels: false, contourWidth: 1.1, layers: { contours: true, grid: false } },
   },
   night: {
@@ -756,7 +765,7 @@ const STYLES = {
     water: ["#15405c", "#071a28"], contour: "#0c1b26",
     paint: {
       townLabel: "#d5e6f2", halo: "rgba(2,6,10,.9)", casing: "rgba(3,6,9,.8)",
-      lineGlow: true, glowColor: "#7ef3ff", stopRing: true, stopRingColor: "rgba(180,244,255,.8)",
+      stopRing: true, stopRingColor: "rgba(180,244,255,.8)",
     },
     apply: { terrainOpacity: 1, roadColorMode: "class", roadWidth: 2.1, roadCasing: true, townLabels: true, indLabels: false, contourWidth: 1, layers: { contours: false, grid: false } },
   },
@@ -818,13 +827,6 @@ const STYLES = {
     water: ["#2b4657", "#101d26"], contour: "#0b0f11",
     paint: { roads: { highway: "#f4f4f4", town: "#e4e4e4", country: "#cbcbcb", airport: "#b9b9b9", constructions: "#8f8f8f", other: "#ababab" } },
     apply: { terrainOpacity: 1, roadColorMode: "class", roadWidth: 2, roadCasing: true, townLabels: true, indLabels: false, contourWidth: 1, layers: { contours: false, grid: false } },
-  },
-  heat: {
-    label: "Elevation heat", blurb: "Hypsometric tint · elevation as colour",
-    bg: "#07070d",
-    ramp: ["#000033", "#2a0f5e", "#6b1a72", "#a52c60", "#cf4446", "#ed6925", "#fcffa4"],
-    water: ["#0d3a5c", "#04101d"], contour: "#07070d",
-    apply: { terrainOpacity: 1, roadColorMode: "class", roadWidth: 1.8, roadCasing: true, townLabels: true, indLabels: false, contourWidth: 1, layers: { contours: false, grid: false } },
   },
   /* CUSTOM is filled in when you start tweaking: it is a copy of the preset you
      came from, minus its `apply`, so nothing overwrites your controls any more. */
@@ -1813,13 +1815,14 @@ function drawLineRoutes(g, vp) {
       };
     }
   }
-  const routeW = (l, extra) => (scaleW ? scaleW(l) : base) + extra;
+  const zw = overlayZoomK();
+  const routeW = (l, extra) => (scaleW ? scaleW(l) : base) * zw + extra;
   g.lineCap = "round"; g.lineJoin = "round";
   g.globalAlpha = settings.overlayOpacity;
   const stroke = (l, w, casing, color, am) => {
     if (!l.path) return;
     g.globalAlpha = settings.overlayOpacity * lineRuleDim(l) * (am === undefined ? 1 : am);
-    g.lineWidth = w / vp.scale;
+    g.lineWidth = (casing ? w + CASING_OUTLINE : w) / vp.scale;
     g.strokeStyle = color || (casing ? "rgba(8,12,15,.8)" : lineColorCss(l));
     g.stroke(l.path);
     g.globalAlpha = settings.overlayOpacity;
@@ -1897,7 +1900,7 @@ function drawLineStops(g, vp) {
     if (!onScreen(rect.x, rect.y, 4)) return false;
     if (overlaps(rect) && !priority) return false;   // selected/hovered line name always wins
     placed.push(rect);
-    label(g, text, x, y, font, color);
+    label(g, text, x, y, font, color, paint("lineHalo", null) || undefined);
     return true;
   };
   /* the line's own name first, then (for the selected line) its stop names */
@@ -1930,9 +1933,10 @@ function screenToWorld(sx, sy) {
     if (cam3d && cam3d.active && Math.abs(cam3d.sinP) > 1e-5) {
       // 3D inverse: find the world point on the terrain surface under the cursor
       const sinP = cam3d.sinP;
+      const exag = cam3d.exag || 1;
       let z = 0, wx, wy;
       for (let i = 0; i < 12; i++) {
-        const u = untilePt(sx, sy + z * s * sinP, cx, cy);
+        const u = untilePt(sx, sy + z * s * exag * sinP, cx, cy);
         wx = data.world.minX + (u[0] - view.x) / s;
         wy = data.world.maxY - (u[1] - view.y) / s;
         const z2 = z3dAt(wx, wy);
@@ -2189,6 +2193,7 @@ function drawScene(g, vp) {
   const wx = vp.ox, wy = vp.oy, ww = W.width * vp.scale, wh = W.height * vp.scale;
   const ov = settings.overlayOpacity;
   const linesOnly = settings.lineView === "lines";   // "Lines only" hides every map layer
+  const zw = overlayZoomK();
 
   /* terrain — the raster rides the same tilt matrix as the world pass, so
      roads, rails and routes always stay glued to the ground */
@@ -2212,11 +2217,11 @@ function drawScene(g, vp) {
     g.lineCap = "round"; g.lineJoin = "round";
     g.globalAlpha = ov * 0.55;
     g.strokeStyle = settings.contourColor;
-    g.lineWidth = px / vp.scale;
+    g.lineWidth = px * zw / vp.scale;
     g.stroke(contourPaths.minor);
     if (settings.contourIndex) {
       g.globalAlpha = ov * 0.95;
-      g.lineWidth = (px * 1.8) / vp.scale;
+      g.lineWidth = px * 1.8 * zw / vp.scale;
       g.stroke(contourPaths.index);
     }
     g.globalAlpha = 1;
@@ -2225,14 +2230,15 @@ function drawScene(g, vp) {
   if (!linesOnly && settings.layers.grid) {
     const step = pickGridStep(vp.scale);
     const dark = isDarkStyle(settings.style);
-    g.lineWidth = 1 / vp.scale;
+    const gz = clamp(zw, 0.5, 3);
+    g.lineWidth = gz / vp.scale;
     g.strokeStyle = dark ? "rgba(255,255,255,.15)" : "rgba(45,35,15,.2)";
     g.beginPath();
     for (let x = Math.ceil(W.minX / step) * step; x <= W.maxX; x += step) { g.moveTo(x, W.minY); g.lineTo(x, W.maxY); }
     for (let y = Math.ceil(W.minY / step) * step; y <= W.maxY; y += step) { g.moveTo(W.minX, y); g.lineTo(W.maxX, y); }
     g.stroke();
     g.strokeStyle = dark ? "rgba(255,255,255,.32)" : "rgba(45,35,15,.45)";
-    g.lineWidth = 1.4 / vp.scale;
+    g.lineWidth = 1.4 * gz / vp.scale;
     g.strokeRect(W.minX, W.minY, W.width, W.height);
   }
   /* roads — casing under everything, then fills widest → narrowest so the
@@ -2252,11 +2258,11 @@ function drawScene(g, vp) {
     if (settings.roadCasing) {
       g.strokeStyle = paint("casing", isDarkStyle(settings.style) ? "rgba(6,10,13,.8)" : "rgba(74,84,96,.4)");
       g.globalAlpha = ov;
-      for (const r of list) { g.lineWidth = (r.w + 2) / vp.scale; g.stroke(r.p); }
+      for (const r of list) { g.lineWidth = (r.w * zw + CASING_OUTLINE) / vp.scale; g.stroke(r.p); }
     }
     const single = settings.roadColorMode === "single";
     for (const r of list) {
-      g.lineWidth = r.w / vp.scale;
+      g.lineWidth = r.w * zw / vp.scale;
       g.strokeStyle = single ? settings.roadColor : roadColorFor(r.cat);
       g.globalAlpha = ov;
       g.stroke(r.p);
@@ -2273,13 +2279,13 @@ function drawScene(g, vp) {
     g.lineCap = "round"; g.lineJoin = "round";
     for (const r of list) {
       g.globalAlpha = ov * railEdgeAlpha(r.rec.edgeType);
-      g.lineWidth = (r.w + 2) / vp.scale;
+      g.lineWidth = (r.w * zw + CASING_OUTLINE) / vp.scale;
       g.strokeStyle = pal.casing;
       g.stroke(r.p);
     }
     for (const r of list) {
       g.globalAlpha = ov * railEdgeAlpha(r.rec.edgeType);
-      g.lineWidth = r.w / vp.scale;
+      g.lineWidth = r.w * zw / vp.scale;
       g.strokeStyle = r.rec.edgeType === "BRIDGE" ? pal.bridge : pal.fill;
       g.stroke(r.p);
     }
@@ -2360,16 +2366,63 @@ function drawTowns(g, vp) {
     label(g, t.name, x, y, font, paint("townLabel", "#ffe6a8"));
   }
 }
+/* Build a Path2D from the inline icon markup. ICONS stores SVG *markup*
+   (`<path>`, `<circle>`, `<ellipse>` …), which `new Path2D(string)` cannot
+   parse — it only accepts naked path data — so the glyphs have to be turned
+   into paths element by element. */
+function svgIconPath(markup) {
+  const out = new Path2D();
+  try {
+    const doc = new DOMParser().parseFromString(
+      `<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`, "image/svg+xml");
+    for (const el of Array.from(doc.documentElement.children)) {
+      const tag = el.tagName.toLowerCase();
+      const num = (a, d) => { const v = parseFloat(el.getAttribute(a)); return isFinite(v) ? v : d; };
+      if (tag === "path") {
+        const d = el.getAttribute("d");
+        if (d) out.addPath(new Path2D(d));
+      } else if (tag === "circle") {
+        const p = new Path2D();
+        p.arc(num("cx", 0), num("cy", 0), num("r", 0), 0, Math.PI * 2);
+        out.addPath(p);
+      } else if (tag === "ellipse") {
+        const p = new Path2D();
+        p.ellipse(num("cx", 0), num("cy", 0), num("rx", 0), num("ry", 0), 0, 0, Math.PI * 2);
+        out.addPath(p);
+      } else if (tag === "rect") {
+        const p = new Path2D();
+        p.rect(num("x", 0), num("y", 0), num("width", 0), num("height", 0));
+        out.addPath(p);
+      }
+    }
+  } catch (e) { console.warn("icon path parse failed", e); }
+  return out;
+}
+function industryGlyphs() {
+  return industryGlyphs._g || (industryGlyphs._g = {
+    raw: svgIconPath(ICONS.mountain),
+    factory: svgIconPath(ICONS.factory),
+    other: svgIconPath(ICONS.database),
+  });
+}
+/* Industry markers are icons, not squares: the group glyph is stroked with a
+   dark ring for contrast and the group colour on top, so raw materials and
+   factories stay distinguishable on any basemap and at any zoom. */
+function drawIndustryIcon(g, group, x, y, s, color) {
+  const set = industryGlyphs();
+  const p = set[group] || set.other;
+  const sc = (s * 2.05) / 24;                 // fit the 24px glyph to the marker
+  g.save();
+  g.translate(x, y);
+  g.scale(sc, sc);
+  g.translate(-12, -12);
+  g.lineJoin = "round"; g.lineCap = "round";
+  g.lineWidth = 5.0 / sc; g.strokeStyle = "rgba(4,8,11,.85)"; g.stroke(p);
+  g.lineWidth = 2.5 / sc; g.strokeStyle = color; g.stroke(p);
+  g.restore();
+}
 function drawIndustries(g, vp) {
   const showLabels = settings.indLabels || vp.scale >= 1;
-  /* badges read as an icon layer: upright, rounded, glyph inside — the map
-     rotation never tilts them (like kepler's icon layer) */
-  const glyphs = drawIndustries._g || (drawIndustries._g = {
-    raw: new Path2D(ICONS.mountain),
-    factory: new Path2D(ICONS.factory),
-    other: new Path2D(ICONS.database),
-  });
-  const wantGlyph = vp.scale >= 0.12;                 // silhouette once readable
   const tilt = tiltActive();
   for (const it of data.industries) {
     if (settings.indOff.includes(it.tag)) continue;
@@ -2377,47 +2430,17 @@ function drawIndustries(g, vp) {
     if (sx < -40 || sy < -40 || sx > vp.w + 40 || sy > vp.h + 40) continue;
     const color = IND_GROUPS[it.group] || IND_GROUPS.other;
     const k = paint("indScale", 1);
-    const s = 7 * k, cr = 2.6 * k;
-    /* tilted: the badge becomes the top face of a prism standing on its
-       own footprint (the icon itself stays upright, like kepler's) */
-    const dy = tilt ? -extrudeHeight(s) : 0;
-    if (tilt) extrudeSides(g, roundedRectPts(sx, sy, s, cr), 0, dy, shadeColor(color, 0.55));
-    g.save(); g.translate(sx, sy + dy);
-    roundedRectPath(g, s, cr);
-    g.fillStyle = color; g.fill();
-    g.lineWidth = 1.4; g.strokeStyle = "rgba(8,12,15,.92)"; g.stroke();
-    if (wantGlyph) {
-      const p = glyphs[it.group] || glyphs.other;
-      const sc = (s * 1.42) / 24;
-      g.save(); g.scale(sc, sc); g.translate(-12, -12);
-      g.lineWidth = 2.4 / sc; g.strokeStyle = "rgba(8,12,15,.92)";
-      g.lineJoin = "round"; g.lineCap = "round";
-      g.stroke(p);
-      g.restore();
-    }
-    g.restore();
+    const s = 6.5 * k;
+    /* tilted: stand the icon a little above its own terrain footprint */
+    const dy = tilt ? -extrudeHeight(s * 0.55) : 0;
+    drawIndustryIcon(g, it.group, sx, sy + dy, s, color);
     if (it.onWater) {
       g.beginPath();
-      if (tilt) polyPath(g, circlePts(sx, sy, 10, 12)); else g.arc(sx, sy, 10, 0, Math.PI * 2);
+      if (tilt) polyPath(g, circlePts(sx, sy, s + 3, 12)); else g.arc(sx, sy, s + 3, 0, Math.PI * 2);
       g.strokeStyle = "rgba(120,220,255,.85)"; g.lineWidth = 1.2; g.stroke();
     }
-    if (showLabels) label(g, prettyIndustry(it.tag), sx + s + 3, sy + 4, "600 11.5px system-ui", color);
+    if (showLabels) label(g, prettyIndustry(it.tag), sx + s + 4, sy + 4, "600 11.5px system-ui", color);
   }
-}
-/* centred rounded square built from cubic beziers (kappa) */
-function roundedRectPath(g, s, r) {
-  const k = r * 0.5523;
-  g.beginPath();
-  g.moveTo(-s + r, -s);
-  g.lineTo(s - r, -s);
-  g.bezierCurveTo(s - r + k, -s, s, -s + r - k, s, -s + r);
-  g.lineTo(s, s - r);
-  g.bezierCurveTo(s, s - r + k, s - r + k, s, s - r, s);
-  g.lineTo(-s + r, s);
-  g.bezierCurveTo(-s + r - k, s, -s, s - r + k, -s, s - r);
-  g.lineTo(-s, -s + r);
-  g.bezierCurveTo(-s, -s + r - k, -s + r - k, -s, -s + r, -s);
-  g.closePath();
 }
 function prettyIndustry(tag) { return String(tag).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()); }
 
@@ -2440,21 +2463,6 @@ function circlePts(x, y, r, n) {
     const a = (i / n) * Math.PI * 2;
     out.push([x + Math.cos(a) * r, y + Math.sin(a) * r]);
   }
-  return out;
-}
-/* rounded-square footprint sampled with lineTo only (badges stay upright) */
-function roundedRectPts(cx, cy, s, r) {
-  const out = [];
-  const corner = (ox, oy, a0, a1) => {
-    for (let i = 0; i < 3; i++) {
-      const a = a0 + (a1 - a0) * (i / 3);
-      out.push([cx + ox + Math.cos(a) * r, cy + oy + Math.sin(a) * r]);
-    }
-  };
-  corner(-s + r, -s + r, Math.PI, Math.PI * 1.5);
-  corner(s - r, -s + r, Math.PI * 1.5, Math.PI * 2);
-  corner(s - r, s - r, 0, Math.PI * 0.5);
-  corner(-s + r, s - r, Math.PI * 0.5, Math.PI);
   return out;
 }
 /* darken a palette colour for the side faces; anything that is not a hex
@@ -2493,9 +2501,9 @@ function extrudeSides(g, pts, dx, dy, side) {
   g.fillStyle = side;
   g.fill();
 }
-function label(g, text, x, y, font, color) {
+function label(g, text, x, y, font, color, halo) {
   g.font = font;
-  g.lineWidth = 3; g.strokeStyle = paint("halo", "rgba(6,10,13,.8)"); g.lineJoin = "round";
+  g.lineWidth = 3; g.strokeStyle = halo || paint("halo", "rgba(6,10,13,.8)"); g.lineJoin = "round";
   g.strokeText(text, x, y);
   g.fillStyle = color; g.fillText(text, x, y);
 }
@@ -4650,6 +4658,16 @@ document.addEventListener("click", e => {
   if (sw) { setSetting("style", sw.dataset.style); syncControls(); return; }
   const dl = t.closest("[data-dlayer]");
   if (dl) { setSetting("dataLayer", dl.dataset.dlayer); syncControls(); return; }
+  const cp = t.closest("[data-cam]");
+  if (cp) {
+    const c = cp.dataset.cam;
+    if (c === "iso") { setSetting("pitch", 35.264); setSetting("bearing", 45); }
+    else if (c === "p15") { setSetting("pitch", 15); setSetting("bearing", 45); }
+    else if (c === "p45") { setSetting("pitch", 45); setSetting("bearing", 45); }
+    else if (c === "p60") { setSetting("pitch", 60); setSetting("bearing", 45); }
+    syncControls();
+    return;
+  }
   const q = t.closest("[data-quick]");
   if (q) { doQuick(q.dataset.quick); return; }
 });
@@ -4745,6 +4763,16 @@ function syncControls() {
     else if (document.activeElement !== el) el.value = v;
   }
   for (const el of $$("[data-dlayer]")) el.classList.toggle("sel", el.dataset.dlayer === settings.dataLayer);
+  /* highlight the matching 3D camera preset (tolerates the rounded display) */
+  const camP = Math.round(+settings.pitch || 0), camB = Math.round(normBearing(+settings.bearing || 0));
+  for (const el of $$("[data-cam]")) {
+    const c = el.dataset.cam;
+    const on = (c === "iso" && camP === 35 && camB === 45) ||
+               (c === "p15" && camP === 15 && camB === 45) ||
+               (c === "p45" && camP === 45 && camB === 45) ||
+               (c === "p60" && camP === 60 && camB === 45);
+    el.classList.toggle("primary", on);
+  }
   for (const el of $$("[data-style]")) {
     el.classList.toggle("sel", el.dataset.style === settings.style);
     const s = STYLES[el.dataset.style];
@@ -4916,6 +4944,10 @@ function buildLegend() {
 /* ---------------- PNG export ---------------- */
 function exportPng(mode) {
   if (!data) { toast("Load a map first", "err"); return; }
+  /* a pitched view exports the 3D relief */
+  if (mode !== "full" && (+settings.pitch || 0) > 0 && settings.lineView !== "lines" && init3D()) {
+    if (exportPng3D()) return;
+  }
   try {
     let w, h, vp;
     if (mode === "full") {
@@ -4929,7 +4961,12 @@ function exportPng(mode) {
     const out = document.createElement("canvas");
     out.width = w; out.height = h;
     const g = out.getContext("2d");
-    drawScene(g, vp);
+    /* The whole-map export is always flat and north-up: force the camera for the
+       duration of the draw, whatever the user currently has on screen. */
+    const sp = settings.pitch, sb = settings.bearing;
+    if (mode === "full") { settings.pitch = 0; settings.bearing = 0; }
+    try { drawScene(g, vp); }
+    finally { if (mode === "full") { settings.pitch = sp; settings.bearing = sb; } }
     out.toBlob(blob => {
       if (!blob) { toast("PNG export failed", "err"); return; }
       const a = document.createElement("a");
@@ -4940,6 +4977,75 @@ function exportPng(mode) {
       toast("Saved " + a.download, "ok");
     }, "image/png");
   } catch (e) { console.error(e); toast("PNG export failed: " + e.message, "err"); }
+}
+
+/* Render the live tilted camera into an offscreen PNG. The whole 3D pipeline is
+   driven by the module-level view/stage globals, so the export temporarily scales
+   them (and the WebGL buffers) to 2x, draws terrain + draped overlays into one
+   canvas, and restores everything before yielding. */
+function exportPng3D() {
+  if (!data || !gl3d || !gl3d.ok) return false;
+  const K = 2;
+  const old = {
+    stageW, stageH, dpr,
+    view: { scale: view.scale, x: view.x, y: view.y },
+    glW: GL_CANVAS.width, glH: GL_CANVAS.height,
+  };
+  let out = null;
+  try {
+    stageW = Math.max(1, Math.round(old.stageW * K));
+    stageH = Math.max(1, Math.round(old.stageH * K));
+    dpr = 1;
+    view.scale = old.view.scale * K;
+    view.x = old.view.x * K;
+    view.y = old.view.y * K;
+
+    GL_CANVAS.width = stageW; GL_CANVAS.height = stageH;
+    gl3d.mesh = null; drape3d = null;
+    gl3d.gl.viewport(0, 0, stageW, stageH);
+    resizeDepthFBO();
+
+    const vp = { scale: view.scale, ox: view.x, oy: view.y, w: stageW, h: stageH, dpr: 1, live: true };
+    renderTerrain3D(vp);
+    if (!cam3d || !cam3d.active || !gl3d.mesh) return false;
+
+    /* overlays on a transparent layer, then composite over the terrain */
+    const overlay = document.createElement("canvas");
+    overlay.width = stageW; overlay.height = stageH;
+    drawScene3D(overlay.getContext("2d"), vp);
+
+    out = document.createElement("canvas");
+    out.width = stageW; out.height = stageH;
+    const g = out.getContext("2d");
+    g.fillStyle = curStyle().bg;
+    g.fillRect(0, 0, stageW, stageH);
+    g.globalAlpha = clamp(settings.terrainOpacity, 0, 1);
+    g.drawImage(GL_CANVAS, 0, 0, stageW, stageH);
+    g.globalAlpha = 1;
+    g.drawImage(overlay, 0, 0);
+  } catch (e) {
+    console.error(e);
+    toast("3D export failed: " + e.message, "err");
+    return false;
+  } finally {
+    stageW = old.stageW; stageH = old.stageH; dpr = old.dpr;
+    view.scale = old.view.scale; view.x = old.view.x; view.y = old.view.y;
+    GL_CANVAS.width = old.glW; GL_CANVAS.height = old.glH;
+    gl3d.mesh = null; drape3d = null;
+    if (gl3d && gl3d.ok) resize3D();
+    requestRender();
+  }
+  if (!out) return false;
+  out.toBlob(blob => {
+    if (!blob) { toast("3D export failed", "err"); return; }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `north-map-3d-${Math.round(performance.now())}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast("Saved " + a.download, "ok");
+  }, "image/png");
+  return true;
 }
 
 /* ---------------- misc UI ---------------- */
@@ -4970,9 +5076,27 @@ function seaLevel3d() {
 }
 
 /* Elevation used for geometry: water surfaces are flattened to sea level so
-   lakes read as flat water instead of deep pits. */
+   lakes read as flat water instead of deep pits. When the WebGL terrain mesh is
+   present this samples the *same* triangulated surface the depth pass renders
+   (reproducing its vertex heights and diagonal split) instead of the raw
+   heightfield. That removes the mesh-vs-heightmap mismatch under every overlay,
+   which was the source of the 3D occlusion flicker. */
 function z3dAt(wx, wy) {
   if (!data) return 0;
+  const m = gl3d && gl3d.mesh;
+  if (m && m.heights && wx >= m.x0 && wx <= m.x1 && wy >= m.y0 && wy <= m.y1) {
+    const fi = (wx - m.x0) / m.dx, fj = (wy - m.y0) / m.dy;
+    const i = clamp(Math.floor(fi), 0, m.nx - 2);
+    const j = clamp(Math.floor(fj), 0, m.ny - 2);
+    const u = fi - i, v = fj - j;
+    const H = m.heights, nx = m.nx;
+    const za = H[j * nx + i], zb = H[j * nx + i + 1];
+    const zc = H[(j + 1) * nx + i], zd = H[(j + 1) * nx + i + 1];
+    // mesh triangulation splits each cell a(i,j)-b(i+1,j)-c(i,j+1)-d(i+1,j+1)
+    // into a-c-b and b-c-d
+    if (u + v <= 1) return za + (zb - za) * u + (zc - za) * v;
+    return (1 - v) * zb + (1 - u) * zc + (u + v - 1) * zd;
+  }
   return Math.max(seaLevel3d(), elevationAt(wx, wy));
 }
 
@@ -4981,7 +5105,10 @@ function z3dAt(wx, wy) {
 function tiltPt3D(sx, sy, z, s) {
   const [tx, ty] = tiltPt(sx, sy, stageW / 2, stageH / 2);
   if (!cam3d) return [tx, ty];
-  return [tx, ty - z * s * cam3d.sinP];
+  // Match computeCamera3D's z term exactly, including the vertical exaggeration
+  // (m[9] = f2 * -s * exag * sinP); omitting exag projected overlays well below
+  // the terrain and made the CPU depth test sample the wrong pixel.
+  return [tx, ty - z * s * cam3d.exag * cam3d.sinP];
 }
 
 /* Normalised depth [0..1] of a world point, matching the WebGL depth buffer. */
@@ -4997,7 +5124,7 @@ function init3D() {
   if (!window.WebGL2RenderingContext) { gl3d = { ok: false }; return false; }
   const gl = GL_CANVAS.getContext("webgl2", {
     alpha: true, premultipliedAlpha: false, antialias: true,
-    depth: true, stencil: false, preserveDrawingBuffer: false
+    depth: true, stencil: false, preserveDrawingBuffer: true
   });
   if (!gl) { gl3d = { ok: false }; return false; }
 
@@ -5099,7 +5226,7 @@ uniform vec3 uSideColor;
 out vec4 outColor;
 void main() {
   if (uDepthPass) {
-    float d = clamp((vDepth - uDepthRange.x) / (uDepthRange.y - uDepthRange.x) - 0.0004, 0.0, 1.0);
+    float d = clamp((vDepth - uDepthRange.x) / (uDepthRange.y - uDepthRange.x), 0.0, 1.0);
     uint u = uint(d * 4294967295.0);
     outColor = vec4(
       float( u        & 0xffu) / 255.0,
@@ -5141,7 +5268,10 @@ function resizeDepthFBO() {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, w, h);
+  // mutable storage: the depth target is reallocated on every size change
+  // (window resize and 3D export), and an immutable texStorage2D may only be
+  // sized once, which would leave a mismatched, incomplete FBO behind.
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, gl3d.fb);
   gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, gl3d.depthRbo);
@@ -5149,6 +5279,7 @@ function resizeDepthFBO() {
   const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
   if (status !== gl.FRAMEBUFFER_COMPLETE) console.warn("3D depth FBO incomplete", status);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.bindTexture(gl.TEXTURE_2D, null);   // never leave the FBO colour texture bound
 
   gl3d.depthBuf = new Uint8Array(w * h * 4);
   gl3d.depthW = w; gl3d.depthH = h;
@@ -5272,6 +5403,7 @@ function buildTerrainMesh3D(spec) {
   const totalVerts = nVerts + skirtVerts;
 
   const vbuf = new Float32Array(totalVerts * 7);
+  const heights = new Float32Array(nVerts);
   const idx = [];
 
   function setVert(i, wx, wy, wz, u, v, shade, side) {
@@ -5286,6 +5418,7 @@ function buildTerrainMesh3D(spec) {
       const wx = x0 + i * dx;
       const wy = y0 + j * dy;
       const wz = Math.max(sea, elevationAt(wx, wy));
+      heights[j * nx + i] = wz;
       const u = (wx - W.minX) / W.width;
       const v = (W.maxY - wy) / W.height;
       setVert(j * nx + i, wx, wy, wz, u, v, 1.0, 0.0);
@@ -5348,7 +5481,7 @@ function buildTerrainMesh3D(spec) {
   const indices = new Uint32Array(idx);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
 
-  gl3d.mesh = { key: spec.key, count: idx.length, baseZ, x0: spec.x0, y0: spec.y0, x1: spec.x1, y1: spec.y1 };
+  gl3d.mesh = { key: spec.key, count: idx.length, baseZ, x0: spec.x0, y0: spec.y0, x1: spec.x1, y1: spec.y1, nx, ny, dx, dy, heights };
 }
 
 function uploadTerrainTexture3D() {
@@ -5428,6 +5561,12 @@ function setupGLAttributes(depthPass) {
   if (depthPass) {
     gl.uniform3f(gl3d.uniforms.uDepthDir, cam3d.d00, cam3d.d01, cam3d.d02);
     gl.uniform2f(gl3d.uniforms.uDepthRange, cam3d.dMin, cam3d.dMax);
+    // Unbind any texture from the sampled unit: the depth pass renders *into*
+    // the FBO whose colour attachment (gl3d.colorTex) is left bound after a
+    // resize, and a texture that is both attached and sampled is a feedback
+    // loop — WebGL rejects the draw and the depth buffer stays at zero.
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, null);
   } else {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, gl3d.texture || null);
@@ -5490,34 +5629,45 @@ function overlayLift(px) {
   return Math.max(base, base / Math.max(0.02, view.scale));
 }
 
-function depthAtMin(sx, sy, r) {
-  if (!gl3d || !gl3d.depthOk || !gl3d.depthBuf) return 1;
-  r = r || 1;
-  let best = 1;
-  const w = gl3d.depthW, h = gl3d.depthH;
-  const cx = Math.round(sx * dpr), cy = Math.round((stageH - sy) * dpr) - 1;
-  for (let dy = -r; dy <= r; dy++) {
-    const y = cy + dy;
-    if (y < 0 || y >= h) continue;
-    for (let dx = -r; dx <= r; dx++) {
-      const x = cx + dx;
-      if (x < 0 || x >= w) continue;
-      const o = (y * w + x) * 4;
-      const u = gl3d.depthBuf[o] + gl3d.depthBuf[o + 1] * 256 + gl3d.depthBuf[o + 2] * 65536 + gl3d.depthBuf[o + 3] * 16777216;
-      const d = u / 0xFFFFFFFF;
-      if (d < best) best = d;
-    }
-  }
-  return best;
+/* World-space clearance (metres) for the CPU overlay depth test. Overlays now
+   sample the same mesh the depth buffer was rendered from, so the remaining
+   error is depth-buffer pixel snapping and sub-pixel slope: a fixed normalised
+   margin cannot cover that at every zoom, because cam3d.dSpan changes with zoom
+   and exaggeration. This converts a constant metre clearance into the depth
+   buffer's normalised units at test time. */
+const OCCLUSION_CLEARANCE = 2.0;
+
+function depthMargin3D(clearanceW) {
+  if (!cam3d) return 0.00005;
+  const span = Math.max(1e-6, cam3d.dMax - cam3d.dMin);
+  const grad = Math.hypot(cam3d.d00, cam3d.d01, cam3d.d02);
+  return Math.max(0.00005, clearanceW * grad / span);
 }
 
-function isOccluded(wx, wy, lift) {
+/* Clearance in metres for the overlay depth test. A fixed world clearance is
+   fine at steep pitch, but at grazing pitch one screen pixel spans
+   ~1/(scale·cosPitch) metres of depth, so the nearest-pixel sample can differ
+   from the true surface by more than the minimum and features flicker. Keep the
+   clearance at least a couple of pixels' worth at the current view. */
+function occlusionClearance() {
+  const s = Math.max(1e-6, view.scale);
+  const cosP = cam3d ? Math.max(0.2, Math.abs(cam3d.cosP)) : 1;
+  return Math.max(OCCLUSION_CLEARANCE, 2 / (s * cosP));
+}
+
+function isOccluded(wx, wy) {
   if (!cam3d || !cam3d.active || !gl3d || !gl3d.depthOk) return false;
-  const z = z3dAt(wx, wy) + (lift == null ? overlayLift() : lift);
+  // Sample the terrain at the surface pixel (not the lifted draw pixel, which
+  // can sit several pixels up-screen over unrelated terrain), but compare
+  // against a depth that is biased toward the camera by the same world lift the
+  // overlay is drawn with. The bias keeps a feature that lies on the surface
+  // clearly in front of the buffer, so numerical/projection noise does not flip
+  // it frame to frame.
+  const z = z3dAt(wx, wy);
   const [sx, sy] = project(wx, wy, null, z);
   if (sx < -50 || sy < -50 || sx > stageW + 50 || sy > stageH + 50) return true;
-  const d = depthOfPoint(wx, wy, z);
-  return d > depthAtMin(sx, sy, 1) + 0.00005;
+  const d = depthOfPoint(wx, wy, z + overlayLift());
+  return d > depthAt(sx, sy) + depthMargin3D(occlusionClearance());
 }
 
 /* ---------------- draped overlay paths ---------------- */
@@ -5549,10 +5699,16 @@ function drapePolyline(pts, stepWorldMin) {
         const wy = pts[k - 1][1] + dy * t;
         z = z3dAt(wx, wy) + LIFT;
         const [x, y] = project(wx, wy, null, z);
-        out.push([x, y, !isOccluded(wx, wy, LIFT)]);
+        out.push([x, y, !isOccluded(wx, wy)]);
       }
     }
-    out.push([sx, sy, !isOccluded(p[0], p[1], LIFT)]);
+    out.push([sx, sy, !isOccluded(p[0], p[1])]);
+  }
+  // A single occluded sample between two visible ones is a depth-sampling
+  // artefact rather than a real occluder; bridge it so the stroke does not
+  // develop a one-point hole that flickers with sub-pixel camera motion.
+  for (let i = 1; i < out.length - 1; i++) {
+    if (!out[i][2] && out[i - 1][2] && out[i + 1][2]) out[i][2] = true;
   }
   const spans = [];
   let cur = null;
@@ -5636,6 +5792,22 @@ function buildGridPaths3D() {
 }
 
 /* ---------------- 3D scene drawing ---------------- */
+
+/* Overlay strokes are a fixed pixel width in the map's own world transform, so
+   without this they do not grow as the terrain is zoomed. Scale them by the
+   current zoom relative to a world-fit view (where the configured width is the
+   intended one), clamped so the network neither vanishes when zoomed out nor
+   becomes slabs when zoomed in. Used by both the 2D and the 3D overlay pass so
+   the two modes always agree at the same zoom and switching between them does
+   not change the thickness. */
+function overlayZoomK() {
+  const ratio = view.scale / Math.max(1e-6, fitScale());
+  // Exact at (and above) the world-fit view; a touch thinner below it so a
+  // zoomed-out network recedes instead of crowding the terrain.
+  const k = ratio < 1 ? ratio * (0.8 + 0.2 * ratio) : ratio;
+  return clamp(k, 0.2, 6);
+}
+
 function drawScene3D(g, vp) {
   g.setTransform(vp.dpr, 0, 0, vp.dpr, 0, 0);
   g.clearRect(0, 0, vp.w, vp.h);
@@ -5644,6 +5816,7 @@ function drawScene3D(g, vp) {
   ensureDrape3D(vp);
   const ov = settings.overlayOpacity;
   const linesOnly = settings.lineView === "lines";
+  const zw = overlayZoomK();
 
   g.save();
   g.setTransform(vp.dpr, 0, 0, vp.dpr, 0, 0);
@@ -5653,11 +5826,11 @@ function drawScene3D(g, vp) {
     const px = Math.max(0.35, settings.contourWidth);
     g.globalAlpha = ov * 0.55;
     g.strokeStyle = settings.contourColor;
-    g.lineWidth = px;
+    g.lineWidth = px * zw;
     for (const p of drape3d.contours.minor) g.stroke(p);
     if (settings.contourIndex) {
       g.globalAlpha = ov * 0.95;
-      g.lineWidth = px * 1.8;
+      g.lineWidth = px * 1.8 * zw;
       for (const p of drape3d.contours.index) g.stroke(p);
     }
     g.globalAlpha = 1;
@@ -5666,7 +5839,7 @@ function drawScene3D(g, vp) {
   if (!linesOnly && settings.layers.grid && drape3d && drape3d.grid) {
     const dark = isDarkStyle(settings.style);
     g.strokeStyle = dark ? "rgba(255,255,255,.18)" : "rgba(45,35,15,.28)";
-    g.lineWidth = 1;
+    g.lineWidth = clamp(zw, 0.5, 3);
     for (const p of drape3d.grid) g.stroke(p);
   }
 
@@ -5685,13 +5858,13 @@ function drawScene3D(g, vp) {
       g.strokeStyle = paint("casing", isDarkStyle(settings.style) ? "rgba(6,10,13,.8)" : "rgba(74,84,96,.4)");
       g.globalAlpha = ov;
       for (const r of list) {
-        g.lineWidth = r.w + 2;
+        g.lineWidth = r.w * zw + CASING_OUTLINE;
         for (const p of r.spans) g.stroke(p);
       }
     }
     const single = settings.roadColorMode === "single";
     for (const r of list) {
-      g.lineWidth = r.w;
+      g.lineWidth = r.w * zw;
       g.strokeStyle = single ? settings.roadColor : roadColorFor(r.cat);
       g.globalAlpha = ov;
       for (const p of r.spans) g.stroke(p);
@@ -5705,13 +5878,13 @@ function drawScene3D(g, vp) {
     list.sort((a, b) => b.w - a.w);
     for (const r of list) {
       g.globalAlpha = ov * railEdgeAlpha(r.rec.edgeType);
-      g.lineWidth = r.w + 2;
+      g.lineWidth = r.w * zw + CASING_OUTLINE;
       g.strokeStyle = pal.casing;
       for (const p of r.spans) g.stroke(p);
     }
     for (const r of list) {
       g.globalAlpha = ov * railEdgeAlpha(r.rec.edgeType);
-      g.lineWidth = r.w;
+      g.lineWidth = r.w * zw;
       g.strokeStyle = r.rec.edgeType === "BRIDGE" ? pal.bridge : pal.fill;
       for (const p of r.spans) g.stroke(p);
     }
@@ -5755,13 +5928,14 @@ function drawLineRoutes3D(g, vp) {
       return t == null ? base : base * clamp(0.55 + 1.45 * Math.sqrt(t / maxT), 0.55, 3);
     };
   }
-  const routeW = (l, extra) => (scaleW ? scaleW(l) : base) + extra;
+  const zw = overlayZoomK();
+  const routeW = (l, extra) => (scaleW ? scaleW(l) : base) * zw + extra;
   g.lineCap = "round"; g.lineJoin = "round";
 
   const stroke = (item, w, casing, color, am) => {
     if (!item.spans) return;
     g.globalAlpha = settings.overlayOpacity * lineRuleDim(item.l) * (am === undefined ? 1 : am);
-    g.lineWidth = w;
+    g.lineWidth = casing ? w + CASING_OUTLINE : w;
     g.strokeStyle = color || (casing ? "rgba(8,12,15,.8)" : lineColorCss(item.l));
     for (const p of item.spans) g.stroke(p);
     g.globalAlpha = settings.overlayOpacity;
@@ -5831,12 +6005,6 @@ function drawTowns3D(g, vp) {
 
 function drawIndustries3D(g, vp) {
   const showLabels = settings.indLabels || vp.scale >= 1;
-  const glyphs = drawIndustries._g || (drawIndustries._g = {
-    raw: new Path2D(ICONS.mountain),
-    factory: new Path2D(ICONS.factory),
-    other: new Path2D(ICONS.database),
-  });
-  const wantGlyph = vp.scale >= 0.12;
   for (const it of data.industries) {
     if (settings.indOff.includes(it.tag)) continue;
     if (isOccluded(it.x, it.y)) continue;
@@ -5844,29 +6012,15 @@ function drawIndustries3D(g, vp) {
     if (sx < -40 || sy < -40 || sx > vp.w + 40 || sy > vp.h + 40) continue;
     const color = IND_GROUPS[it.group] || IND_GROUPS.other;
     const k = paint("indScale", 1);
-    const s = 7 * k, cr = 2.6 * k;
-    const dy = -extrudeHeight(s);
-    extrudeSides(g, roundedRectPts(sx, sy, s, cr), 0, dy, shadeColor(color, 0.55));
-    g.save(); g.translate(sx, sy + dy);
-    roundedRectPath(g, s, cr);
-    g.fillStyle = color; g.fill();
-    g.lineWidth = 1.4; g.strokeStyle = "rgba(8,12,15,.92)"; g.stroke();
-    if (wantGlyph) {
-      const p = glyphs[it.group] || glyphs.other;
-      const sc = (s * 1.42) / 24;
-      g.save(); g.scale(sc, sc); g.translate(-12, -12);
-      g.lineWidth = 2.4 / sc; g.strokeStyle = "rgba(8,12,15,.92)";
-      g.lineJoin = "round"; g.lineCap = "round";
-      g.stroke(p);
-      g.restore();
-    }
-    g.restore();
+    const s = 6.5 * k;
+    const dy = -extrudeHeight(s * 0.55);
+    drawIndustryIcon(g, it.group, sx, sy + dy, s, color);
     if (it.onWater) {
       g.beginPath();
-      polyPath(g, circlePts(sx, sy, 10, 12));
+      polyPath(g, circlePts(sx, sy, s + 3, 12));
       g.strokeStyle = "rgba(120,220,255,.85)"; g.lineWidth = 1.2; g.stroke();
     }
-    if (showLabels) label(g, prettyIndustry(it.tag), sx + s + 3, sy + 4, "600 11.5px system-ui", color);
+    if (showLabels) label(g, prettyIndustry(it.tag), sx + s + 4, sy + 4, "600 11.5px system-ui", color);
   }
 }
 
@@ -5915,7 +6069,7 @@ function drawLineStops3D(g, vp) {
     if (!onScreen(rect.x, rect.y, 4)) return false;
     if (overlaps(rect) && !priority) return false;
     placed.push(rect);
-    label(g, text, x, y, font, color);
+    label(g, text, x, y, font, color, paint("lineHalo", null) || undefined);
     return true;
   };
   for (const l of [sel, hov].filter(Boolean)) {
