@@ -5,15 +5,11 @@ local main_mod_button_area = ug_require "::/gui/main/main_mod_button_area.tl" as
 --- A Transport Fever 3 update (Oct 2026) made app.saveUserdata reject any
 --- directory that is not one of its registered userdata namespaces, with
 --- "The directory you trying to access is not available or invalid". The
---- engine only knows the namespaces towns_industries, heightmaps and
---- mod_presets. Try those plus a plain "userdata" name, first match wins; the
---- status line reports the folder that worked.
-local exportCandidates = {
-	{ directory = "userdata", fileName = "network_atlas_export" },
-	{ directory = "heightmaps", fileName = "network_atlas_export" },
-	{ directory = "mod_presets", fileName = "network_atlas_export" },
-	{ directory = "towns_industries", fileName = "network_atlas_export" },
-}
+--- engine only knows three namespaces: towns_industries, heightmaps and
+--- mod_presets. heightmaps is the least intrusive (the map editor only lists
+--- image files there, so our .lua export stays hidden).
+local exportDirectory = "heightmaps"
+local exportFileName = "network_atlas_export"
 
 --- Upper bound of the exported origin/destination cargo flows. The largest
 --- volumes are kept and the number of flows found is reported separately, so a
@@ -1911,26 +1907,15 @@ local NetworkAtlasPlugin = react.RegisterPluginRecipe(
 				econ = econ,
 			}
 
-			local usedDirectory : string = nil
-			local usedFileName : string = nil
-			local lastError : string = nil
-			for _, candidate in ipairs(exportCandidates) do
-				local saved, err = pcall(function()
-					app.saveUserdata(candidate.directory, candidate.fileName, exportData)
-				end)
-				if saved then
-					usedDirectory = candidate.directory
-					usedFileName = candidate.fileName
-					print("[network_atlas] saveUserdata ok: " .. candidate.directory .. "/" .. candidate.fileName)
-					break
-				end
-				lastError = tostring(err)
-				print("[network_atlas] saveUserdata FAIL " .. candidate.directory .. "/" .. candidate.fileName .. ": " .. tostring(err))
+			local saved, err = pcall(function()
+				app.saveUserdata(exportDirectory, exportFileName, exportData)
+			end)
+			if not saved then
+				print("[network_atlas] saveUserdata FAIL " .. exportDirectory .. "/" .. exportFileName .. ": " .. tostring(err))
+				error("could not write userdata: " .. tostring(err))
 			end
-			if not usedDirectory then
-				error("could not write userdata: " .. tostring(lastError))
-			end
-			return tostring(#roads) .. " roads, " .. tostring(#rails) .. " rails and " .. tostring(#lines) .. " lines", usedDirectory, usedFileName
+			print("[network_atlas] saveUserdata ok: " .. exportDirectory .. "/" .. exportFileName)
+			return tostring(#roads) .. " roads, " .. tostring(#rails) .. " rails and " .. tostring(#lines) .. " lines", exportDirectory, exportFileName
 		end
 
 		local exportMap = function()
