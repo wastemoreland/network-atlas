@@ -1,0 +1,425 @@
+<!doctype html>
+<!-- Generated from src/ by build/build.mjs — do not edit directly. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Network Atlas</title>
+<!-- @styles -->
+</head>
+<body>
+
+<header id="topbar">
+  <button id="sidebarToggle" class="icon" data-icon="menu" title="Toggle control panel"></button>
+  <div class="brand" data-icon="map">Network<span>Atlas</span></div>
+  <div id="fileChip" class="hidden" title=""></div>
+  <div class="spacer"></div>
+  <div id="busy"><div id="busyBar"></div></div>
+  <div id="status">No map loaded</div>
+  <button id="openBtn" class="btn" data-icon="file">Open export…</button>
+  <button id="folderBtn" class="btn" data-icon="folder">Open save folder…</button>
+  <button id="econBtn" class="btn primary" data-icon="chart" title="Network, cargo and transport analytics">Analytics</button>
+</header>
+
+<div id="app">
+  <aside id="sidebar">
+
+    <details open data-sec="mapstyle">
+      <summary><span class="cap" data-icon="palette">Map style</span></summary>
+      <div class="sec">
+        <div class="styles" id="stylePick">
+          <button class="swatch" data-style="satellite"><i></i><b>Satellite</b></button>
+          <button class="swatch" data-style="atlas"><i></i><b>Atlas</b></button>
+          <button class="swatch" data-style="minimal"><i></i><b>Minimal</b></button>
+          <button class="swatch" data-style="topo"><i></i><b>Topo</b></button>
+          <button class="swatch" data-style="night"><i></i><b>Night</b></button>
+          <button class="swatch" data-style="blueprint"><i></i><b>Blueprint</b></button>
+          <button class="swatch" data-style="transport"><i></i><b>Transport style</b></button>
+          <button class="swatch" data-style="economy"><i></i><b>Economy style</b></button>
+          <button class="swatch" data-style="network"><i></i><b>Network style</b></button>
+          <button class="swatch" data-style="terrain"><i></i><b>Terrain</b></button>
+          <button class="swatch" data-style="grayscale"><i></i><b>Grayscale</b></button>
+          <button class="swatch" data-style="custom"><i></i><b>Custom</b></button>
+        </div>
+        <div class="hint-txt" title="Each preset sets the terrain palette, water, road colour, casing and labels in one click. Change any colour or width below and the map keeps that preset's palette as Custom.">One click gives a complete look; tweaking any colour keeps that palette as <b>Custom</b>.</div>
+        <div class="btnrow"><button class="btn small ghost secReset" data-reset="mapstyle" data-icon="undo">Reset section</button></div>
+      </div>
+    </details>
+
+    <details open data-sec="layers">
+      <summary><span class="cap" data-icon="layers">Layers</span></summary>
+      <div class="sec" id="layerList">
+        <label class="chk"><input type="checkbox" data-set="layers.terrain"> Terrain shading</label>
+        <label class="chk"><input type="checkbox" data-set="layers.grid"> Tile grid</label>
+        <label class="chk"><input type="checkbox" data-set="layers.roads"> Roads &amp; rails</label>
+        <label class="chk"><input type="checkbox" data-set="layers.towns"> Towns</label>
+        <label class="chk"><input type="checkbox" data-set="layers.industries"> Industries</label>
+        <label class="chk"><input type="checkbox" data-set="layers.lines"> Transport lines</label>
+        <label class="chk"><input type="checkbox" data-set="layers.minimap"> Minimap</label>
+        <div class="hint-txt" title="Hillshade and contours now live with their own settings in Terrain shading & relief and Contour lines.">Hillshade, contours and their options are in their own sections below.</div>
+        <div class="row"><label>Terrain opacity</label><input type="range" data-set="terrainOpacity" min="0" max="1" step="0.05"><span class="val" data-out="terrainOpacity"></span></div>
+        <div class="row"><label>Overlays opacity</label><input type="range" data-set="overlayOpacity" min="0" max="1" step="0.05"><span class="val" data-out="overlayOpacity"></span></div>
+        <div class="btnrow"><button class="btn small ghost secReset" data-reset="layers" data-icon="undo">Reset section</button></div>
+      </div>
+    </details>
+
+    <details data-sec="terrain">
+      <summary><span class="cap" data-icon="mountain">Terrain shading &amp; relief</span></summary>
+      <div class="sec">
+        <div class="row"><label for="detail">Terrain detail</label>
+          <select id="detail" data-set="detail">
+            <option value="draft">Draft (fast)</option>
+            <option value="normal">Normal</option>
+            <option value="full">Full resolution</option>
+          </select>
+        </div>
+        <div class="hint-txt" title="Higher detail renders the heightmap at its native resolution — slower, sharper when zoomed in.">Detail sets the mesh resolution; higher is sharper and slower.</div>
+        <label class="chk"><input type="checkbox" data-set="layers.hillshade"> Hillshade</label>
+        <div class="row"><label>Hillshade strength</label><input type="range" data-set="hillshadeStrength" min="0" max="1.5" step="0.05"><span class="val" data-out="hillshadeStrength"></span></div>
+        <div class="row"><label>Sun azimuth</label><input type="range" data-set="sunAzimuth" min="0" max="360" step="5"><span class="val" data-out="sunAzimuth"></span></div>
+        <div class="row"><label>Sun elevation</label><input type="range" data-set="sunElevation" min="5" max="89" step="1"><span class="val" data-out="sunElevation"></span></div>
+        <div class="row"><label>Vertical exaggeration</label><input type="range" data-set="exaggeration" min="1" max="6" step="0.1"><span class="val" data-out="exaggeration"></span></div>
+        <div class="hint-txt" title="Vertical exaggeration multiplies every height in the 3D view and the hillshade; a shaded relief and lit surface, not generated terrain.">This section shades and lights the heightmap — it does not generate terrain.</div>
+        <label class="chk"><input type="checkbox" data-set="seaAuto"> Sea level from export (<span id="waterLevelTxt">—</span>)</label>
+        <div class="row"><label>Sea level</label><input type="range" data-set="seaLevel" min="-300" max="200" step="1"><span class="val" data-out="seaLevel"></span></div>
+        <label class="chk"><input type="checkbox" data-set="elevAuto"> Automatic elevation range</label>
+        <div class="grid2">
+          <div class="row"><label>Min (m)</label><input type="number" id="elevMin" data-set="elevMin" step="5"></div>
+          <div class="row"><label>Max (m)</label><input type="number" id="elevMax" data-set="elevMax" step="5"></div>
+        </div>
+        <div class="hint-txt" title="Colour ramp runs from min to max. Raising the minimum makes lowlands flatter and highs stand out.">Raising the minimum flattens lowlands so highs stand out.</div>
+        <div class="btnrow"><button class="btn small ghost secReset" data-reset="terrain" data-icon="undo">Reset section</button></div>
+      </div>
+    </details>
+
+    <details data-sec="contour">
+      <summary><span class="cap" data-icon="contour">Contour lines</span></summary>
+      <div class="sec">
+        <label class="chk"><input type="checkbox" data-set="layers.contours"> Show contour lines</label>
+        <div class="row"><label for="contourInterval">Interval</label>
+          <select id="contourInterval" data-set="contourInterval">
+            <option value="auto">Automatic</option><option value="5">5 m</option><option value="10">10 m</option>
+            <option value="25">25 m</option><option value="50">50 m</option><option value="100">100 m</option>
+          </select>
+        </div>
+        <label class="chk"><input type="checkbox" data-set="contourIndex"> Index line every 5th</label>
+        <div class="row"><label for="contourColor">Colour</label><input type="color" id="contourColor" data-set="contourColor"></div>
+        <div class="row"><label for="contourWidth">Width</label><input type="range" id="contourWidth" data-set="contourWidth" min="0.5" max="3" step="0.5"><span class="val" data-out="contourWidth"></span></div>
+        <div class="hint-txt" title="Contours are computed from the exported heightmap (sampled grid) — they stay sharp at every zoom level.">Computed from the exported heightmap; sharp at every zoom.</div>
+        <div class="btnrow"><button class="btn small ghost secReset" data-reset="contour" data-icon="undo">Reset section</button></div>
+      </div>
+    </details>
+
+    <details data-sec="roads">
+      <summary><span class="cap" data-icon="road">Roads &amp; rails</span></summary>
+      <div class="sec">
+        <div class="hint-txt" title="Width, colour and casing here size both roads and railway tracks; turning the Roads & rails layer off hides every street and track.">Width, colour and casing apply to roads and rail tracks alike.</div>
+        <div class="row"><label for="roadColorMode">Colour by</label>
+          <select id="roadColorMode" data-set="roadColorMode"><option value="class">Road class</option><option value="single">Single colour</option></select>
+        </div>
+        <div class="row"><label for="roadColor">Colour</label><input type="color" id="roadColor" data-set="roadColor"></div>
+        <div class="row"><label for="roadWidth">Line width</label><input type="range" id="roadWidth" data-set="roadWidth" min="0.5" max="5" step="0.5"><span class="val" data-out="roadWidth"></span></div>
+        <label class="chk"><input type="checkbox" data-set="roadCasing"> Dark casing (readability)</label>
+        <div class="btnrow"><button class="btn small" data-quick="roads:all">All roads</button><button class="btn small" data-quick="roads:none">No roads</button></div>
+        <div id="roadCats"></div>
+        <details class="sub"><summary>Per template</summary><div class="sec" id="roadTemplates"></div></details>
+        <div class="btnrow"><button class="btn small ghost secReset" data-reset="roads" data-icon="undo">Reset section</button></div>
+      </div>
+    </details>
+
+    <details data-sec="towns">
+      <summary><span class="cap" data-icon="town">Towns</span></summary>
+      <div class="sec">
+        <label class="chk"><input type="checkbox" data-set="townLabels"> Show labels</label>
+        <div class="row"><label for="townMetric">Size metric</label>
+          <select id="townMetric" data-set="townMetric">
+            <option value="max">Largest factor</option><option value="sum">Sum of factors</option>
+            <option value="f1">Factor 1</option><option value="f2">Factor 2</option><option value="f3">Factor 3</option>
+          </select>
+        </div>
+        <div class="row"><label for="townMin">Minimum size (<span id="townMinMetric">largest factor</span>)</label><input type="range" id="townMin" data-set="townMin" min="0" max="100" step="1"><span class="val" data-out="townMin"></span></div>
+        <div class="row"><label for="townSize">Marker size</label><input type="range" id="townSize" data-set="townSize" min="0.5" max="3" step="0.1"><span class="val" data-out="townSize"></span></div>
+        <div class="hint-txt" title="Size factors come straight from the game export — the game does not label them, so try each metric. Minimum size filters on whichever metric is selected above.">Town size is filtered by the selected metric above.</div>
+        <div class="btnrow"><button class="btn small ghost secReset" data-reset="towns" data-icon="undo">Reset section</button></div>
+      </div>
+    </details>
+
+    <details data-sec="inds">
+      <summary><span class="cap" data-icon="factory">Industries</span></summary>
+      <div class="sec">
+        <label class="chk"><input type="checkbox" data-set="indLabels"> Show labels</label>
+        <label class="chk"><input type="checkbox" data-set="indAutoLabels"> Auto-label when zoomed in</label>
+        <div class="btnrow">
+          <button class="btn small" data-quick="ind:all">All</button>
+          <button class="btn small" data-quick="ind:raw">Raw materials</button>
+          <button class="btn small" data-quick="ind:factory">Factories</button>
+          <button class="btn small" data-quick="ind:none">None</button>
+        </div>
+        <div class="chips" id="indChips"></div>
+        <div class="btnrow"><button class="btn small ghost secReset" data-reset="inds" data-icon="undo">Reset section</button></div>
+      </div>
+    </details>
+
+    <details open id="linesSec" data-sec="lines">
+      <summary><span class="cap" data-icon="train">Transport lines <span id="lineCount"></span></span></summary>
+      <div class="sec">
+        <div class="row"><label for="lineView">View</label>
+          <select id="lineView" data-set="lineView">
+            <option value="linesmap">Lines + map</option>
+            <option value="lines">Lines only</option>
+          </select>
+        </div>
+        <label class="chk"><input type="checkbox" data-set="lineRoutes"> Draw routes</label>
+        <label class="chk"><input type="checkbox" data-set="lineStops"> Stop markers on every line</label>
+        <div class="row"><label>Stop size</label><input type="range" data-set="lineStopSize" min="1" max="8" step="0.5"><span class="val" data-out="lineStopSize"></span></div>
+        <div class="row"><label>Route width</label><input type="range" data-set="lineWidth" min="1" max="6" step="0.5"><span class="val" data-out="lineWidth"></span></div>
+        <label class="chk"><input type="checkbox" data-set="lineLabels"> Label stops (selected / hovered line)</label>
+        <div class="hint-txt">Uncheck <b>Draw routes</b> to see the stops of your network without the lines themselves.</div>
+        <div class="railSec">
+          <b>Highlight routes by rule</b>
+          <label class="chk"><input type="checkbox" data-set="lineRule.on"> Automated highlight (dims the other routes)</label>
+          <div class="row"><label>Metric</label><select id="lineRuleMetric" data-set="lineRule.metric"></select></div>
+          <div class="row"><label>Condition</label>
+            <select data-set="lineRule.op">
+              <option value=">">greater than</option>
+              <option value=">=">at least</option>
+              <option value="<">less than</option>
+              <option value="<=">at most</option>
+              <option value="==">exactly</option>
+            </select>
+          </div>
+          <div class="row"><label>Value</label><input type="number" data-set="lineRule.value" step="any"></div>
+          <div class="btnrow">
+            <button class="btn small" data-quick="rule:load85">Load &gt; 85%</button>
+            <button class="btn small" data-quick="rule:load40">Load &lt; 40%</button>
+            <button class="btn small" data-quick="rule:loss">Balance &lt; 0</button>
+            <button class="btn small" data-quick="rule:issues">Issues &gt; 0</button>
+          </div>
+          <div class="hint-txt" id="lineRuleCount"></div>
+        </div>
+        <input type="text" id="lineFilter" placeholder="Filter lines: name, mode, cargo, stop…" autocomplete="off">
+        <div class="btnrow">
+          <button class="btn small" data-quick="lines:all">Show all lines</button>
+          <button class="btn small" data-quick="lines:none">Hide all lines</button>
+        </div>
+        <div class="btnrow">
+          <button class="btn small" data-quick="lineModes:all">Show all modes</button>
+          <button class="btn small" data-quick="lineModes:none">Hide all modes</button>
+        </div>
+        <div class="chips" id="lineModeChips"></div>
+        <div class="ltablewrap" id="lineTableWrap">
+          <table class="ltable">
+            <colgroup><col style="width:64%"><col style="width:36%"></colgroup>
+            <thead><tr>
+              <th scope="col">Name</th>
+              <th scope="col" title="Transport mode(s)">Mode</th>
+            </tr></thead>
+            <tbody id="lineTableBody"></tbody>
+          </table>
+        </div>
+        <div id="lineEmpty" class="hint-txt hidden"></div>
+        <div id="lineDetail"></div>
+        <div class="hint-txt" title="This list only picks which lines are drawn on the map. All statistics, graphs and cargo data live in the Analytics panel in the top bar.">This list shows/hides lines on the map; their statistics are in the <b>Analytics</b> panel.</div>
+        <div class="btnrow"><button class="btn small ghost secReset" data-reset="lines" data-icon="undo">Reset section</button></div>
+      </div>
+    </details>
+
+    <details data-sec="datalayers">
+      <summary><span class="cap" data-icon="chart">Data layers</span></summary>
+      <div class="sec">
+        <div class="styles">
+          <button class="swatch dlayer" data-dlayer="none"><i style="background:linear-gradient(135deg,#39424a,#69757f)"></i><b>None</b></button>
+          <button class="swatch dlayer" data-dlayer="flows"><i style="background:linear-gradient(135deg,#4d8dff,#34d17f 55%,#ff9d5c)"></i><b>Cargo flows</b></button>
+          <button class="swatch dlayer" data-dlayer="freight"><i style="background:linear-gradient(135deg,#1fbad6,#0f9668)"></i><b>Freight volume</b></button>
+          <button class="swatch dlayer" data-dlayer="load"><i style="background:linear-gradient(90deg,#4d8dff,#8fa3ad 55%,#e8a33d)"></i><b>Line load</b></button>
+          <button class="swatch dlayer" data-dlayer="passengers"><i style="background:linear-gradient(135deg,rgba(31,186,214,.35),#1fbad6)"></i><b>Passengers</b></button>
+          <button class="swatch dlayer" data-dlayer="chains"><i style="background:linear-gradient(135deg,#c17bff,#4d8dff 50%,#34d17f)"></i><b>Supply chains</b></button>
+          <button class="swatch dlayer" data-dlayer="linecargo"><i style="background:linear-gradient(90deg,#4d8dff,#34d17f,#ff9d5c,#c17bff)"></i><b>Cargo by line</b></button>
+        </div>
+        <div class="hint-txt" title="Pick an overlay — it draws on top of the map using the export's cargo, line and population data. The map-only presets need Lines + map.">Pick an overlay to draw it on top of the map.</div>
+        <div class="row"><label for="dataOpacity">Opacity</label><input type="range" id="dataOpacity" data-set="dataOpacity" min="0" max="1" step="0.05"><span class="val" data-out="dataOpacity"></span></div>
+        <div class="row"><label for="dataScale">Symbol size</label><input type="range" id="dataScale" data-set="dataScale" min="0.5" max="2" step="0.05"><span class="val" data-out="dataScale"></span></div>
+        <div class="btnrow"><button class="btn small ghost secReset" data-reset="datalayers" data-icon="undo">Reset section</button></div>
+      </div>
+    </details>
+
+    <details data-sec="camera">
+      <summary><span class="cap" data-icon="mountain">3D camera</span></summary>
+      <div class="sec">
+        <div class="hint-txt">Presets keep the isometric rotation and change the tilt. Right-drag the map (or shift-drag) to set bearing and tilt freely.</div>
+        <div class="btnrow">
+          <button class="btn small" data-cam="iso" title="Isometric — 45° rotation, 35° tilt">Isometric</button>
+          <button class="btn small" data-cam="p15" title="Isometric, 15° tilt">15°</button>
+          <button class="btn small" data-cam="p45" title="Isometric, 45° tilt">45°</button>
+          <button class="btn small" data-cam="p60" title="Isometric, 60° tilt">60°</button>
+        </div>
+        <div class="btnrow"><button class="btn small ghost" data-cam="flat" title="Return to the flat north-up view">Flat · north-up</button></div>
+      </div>
+    </details>
+
+    <details data-sec="export">
+      <summary><span class="cap" data-icon="database">Data &amp; export</span></summary>
+      <div class="sec">
+        <dl class="stats" id="stats"><dt>File</dt><dd>not loaded</dd></dl>
+        <div class="btnrow">
+          <button class="btn small" data-icon="crosshair" id="fitBtn">Fit map</button>
+          <button class="btn small" data-icon="image" id="pngView">Save view PNG</button>
+          <button class="btn small" data-icon="image" id="pngFull">Save full 2D map</button>
+        </div>
+        <div class="hint-txt">Save view PNG captures the current tilted 3D relief; Save full 2D map always renders the whole map flat and north-up.</div>
+        <div class="row"><label for="exportSize">Full map width</label>
+          <select id="exportSize" data-set="exportSize"><option value="1024">1024 px</option><option value="2048">2048 px</option><option value="4096">4096 px</option></select>
+        </div>
+        <details class="sub"><summary>Diagnostics</summary><dl class="stats" id="diagStats"></dl></details>
+        <div class="btnrow"><button class="btn small" data-icon="undo" id="resetSettings">Reset all settings</button></div>
+        <div class="hint-txt">Drag &amp; drop a <code>network_atlas_export.lua</code> onto the window at any time to load another map.</div>
+      </div>
+    </details>
+
+  </aside>
+
+  <main id="stage">
+    <canvas id="gl" class="hidden" aria-hidden="true"></canvas>
+    <canvas id="map"></canvas>
+
+    <div id="search">
+      <input id="searchBox" type="text" placeholder="Search lines, towns, industries, roads or “x, y”…" aria-label="Search lines, towns, industries, roads or coordinates" autocomplete="off">
+      <span class="searchIco" data-icon="search"></span>
+      <div id="searchResults"></div>
+    </div>
+
+    <div id="legend" class="card hidden"></div>
+    <div id="hint">Drag to pan · scroll to zoom · right-drag to tilt (extrudes the heightmap in 3D) · double-click to zoom · arrows to pan</div>
+
+    <div id="bottomleft">
+      <div id="scalebox"><div id="scaleLine"></div><span id="scaleTxt">—</span></div>
+      <div id="coords">x — · y —</div>
+    </div>
+
+    <canvas id="minimap" width="168" height="168" title="Click to jump"></canvas>
+    <div id="zoomctl">
+      <button class="zbtn" id="zoomIn" title="Zoom in">＋</button>
+      <button class="zbtn" id="zoomOut" title="Zoom out">－</button>
+      <button class="zbtn" id="zoomFit" data-icon="crosshair" title="Fit whole map"></button>
+      <button class="zbtn tilt sep" data-act="tilt" title="Toggle the 3D / flat view">3D</button>
+      <button class="zbtn" data-act="compass" title="Reset the rotation to north"><span class="cneedle">N</span></button>
+    </div>
+
+    <div id="infocard" class="card">
+      <button class="x" id="infoClose" data-icon="x" title="Close"></button>
+      <div class="head"><b id="infoTitle"></b><small id="infoSub"></small></div>
+      <div class="body" id="infoBody"></div>
+    </div>
+
+    <!-- ================= Economy / cargo / transport panel ================= -->
+    <div id="econ" role="dialog" aria-modal="true" aria-label="Network analytics">
+      <div class="econWin">
+        <div class="econBar">
+          <b>Analytics</b>
+          <span class="muted" id="econSub"></span>
+          <span class="sp"></span>
+          <span class="muted" id="econSel"></span>
+          <button class="btn small" data-icon="map" id="econShowMap" data-econopen="map">Show on map</button>
+          <button class="btn small" data-icon="x" id="econClose">Close · Esc</button>
+        </div>
+        <div class="econBody">
+          <aside class="econRail">
+            <div class="railSec">
+              <b>Analytics / Explore</b>
+              <div class="hint-txt" title="One chart, several types. For a scatter pick the two axes; the matrix shows the correlation of every pair and a click opens it as a scatter.">One chart, several types.</div>
+              <div class="row"><label for="econType">Chart</label><select id="econType" data-econ="type">
+                <option value="bar">Bars per line</option>
+                <option value="donut">Share by mode</option>
+                <option value="cargo">Capacity by cargo</option>
+                <option value="flows">Cargo flows</option>
+                <option value="scatter">Scatter / bubble</option>
+                <option value="matrix">Correlation matrix</option>
+                <option value="rank">Ranking</option>
+              </select></div>
+              <div class="row" id="econMetricRow"><label for="econMetric">Metric</label><select id="econMetric" data-econ="metric"></select></div>
+              <div class="row hidden" id="econXRow"><label for="econX">X</label><select id="econX" data-econ="x"></select></div>
+              <div class="row hidden" id="econYRow"><label for="econY">Y</label><select id="econY" data-econ="y"></select></div>
+              <div class="row hidden" id="econSizeRow"><label for="econSize">Bubble size</label><select id="econSize" data-econ="size"></select></div>
+              <div class="hint-txt" title="Bubble colour follows the transport mode; click a bubble to select that line on the map." id="econExploreHint">Bubble colour = mode; click a bubble to select it.</div>
+            </div>
+            <div class="railSec">
+              <b>Sorting</b>
+              <div class="row" id="econSortRow"><label for="econSort">Sort by</label><select id="econSort" data-econ="sort"></select></div>
+              <div class="row" id="econDirRow"><label for="econDir">Order</label><select id="econDir" data-econ="dir">
+                <option value="desc">Descending</option>
+                <option value="asc">Ascending</option>
+              </select></div>
+              <div class="row" id="econLimitRow"><label for="econLimit">Chart rows</label><select id="econLimit" data-econ="limit">
+                <option value="10">Top 10</option>
+                <option value="25">Top 25</option>
+                <option value="50">Top 50</option>
+                <option value="0">All rows</option>
+              </select></div>
+              <label class="chk" id="econValuesRow"><input type="checkbox" id="econValues" data-econ="values"> Value labels</label>
+              <div class="hint-txt" title="Bars, shares, cargo and rankings use the row limit; scatter and matrix use every matching line, so this block is disabled for them.">Sorting applies to bars, shares and rankings only.</div>
+            </div>
+            <div class="railSec">
+              <b>Filters</b>
+              <input type="text" id="econFilter" placeholder="Name, mode, cargo, stop…" aria-label="Filter lines by name, mode, cargo or stop" autocomplete="off">
+              <div class="btnrow">
+                <button class="btn small" data-quick="lineModes:all">Show all modes</button>
+                <button class="btn small" data-quick="lineModes:none">Hide all modes</button>
+              </div>
+              <div class="chips" id="econModeChips"></div>
+              <label class="chk"><input type="checkbox" id="econOnlyData" data-econ="onlyData"> <span id="econOnlyDataLabel">Only lines with chart data</span></label>
+              <div class="hint-txt" title="The map's per-line show/hide checkboxes do not apply in this panel, and this panel's filters do not change the map.">Map show/hide does not apply here; panel filters do not change the map.</div>
+              <div class="hint-txt" id="econHint"></div>
+            </div>
+          </aside>
+          <main class="econMain">
+            <div class="kpis" id="econKpis"></div>
+            <div class="charts">
+              <div class="chartBox">
+                <div class="chartHead"><b id="econTitle"></b><span class="sp"></span><button class="btn small" id="econChartPng" data-icon="image" title="Save this chart as a PNG">Save chart PNG</button></div>
+                <canvas id="econChart"></canvas>
+              </div>
+            </div>
+            <div class="econTableWrap" id="econTableWrap">
+              <table class="ltable econTable">
+                <thead id="econHead"></thead>
+                <tbody id="econTableBody"></tbody>
+              </table>
+            </div>
+            <div id="econEmpty" class="hint-txt hidden"></div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <div id="toasts"></div>
+    <div id="dropOverlay">Drop network_atlas_export.lua to load</div>
+
+    <div class="overlay" id="welcome">
+      <div class="wcard">
+        <h2>Network Atlas</h2>
+        <p>Open a map export made by the <b>Network Atlas: Interactive Map &amp; Stats</b> mod inside Transport Fever 3.</p>
+        <div class="drop" id="dropZone"><b>Drop network_atlas_export.lua here</b><br>or use the buttons below</div>
+        <div class="btnrow" style="justify-content:center">
+          <button class="btn primary" data-icon="file" id="wOpen">Open export file…</button>
+          <button class="btn" data-icon="folder" id="wFolder">Open save folder…</button>
+          <button class="btn hidden" data-icon="undo" id="wReopen">Reopen last file</button>
+        </div>
+        <div class="steps">
+          <b>From a save:</b>
+          <ol>
+            <li>Enable <code>Network Atlas: Interactive Map &amp; Stats</code> and load your game.</li>
+            <li>Click <code>Export map → Export map data</code> in the top-left mod buttons.</li>
+            <li>The file is written to the game's userdata folder — the mod shows the exact path on its status line. Drop that file here.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<input id="file" type="file" accept=".lua,.txt,.map" class="hidden">
+
+<!-- @scripts -->
+</body>
+</html>

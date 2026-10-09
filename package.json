@@ -1,0 +1,10 @@
+{
+  "name": "network-atlas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Transport Fever 3 map export mod and its single-file interactive web viewer.",
+  "scripts": {
+    "build": "node build/build.mjs",
+    "check": "node build/build.mjs --check"
+  }
+}

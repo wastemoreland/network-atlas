@@ -13,7 +13,7 @@ The export is a **snapshot** taken when you press the export button — not live
 - **Network inspection** — select a line to see its route, stops, capacity usage, throughput, frequency and configuration issues.
 - **Economy** — cargo flows between industries and towns, production chains and town growth.
 - **Search and filter** — find lines by name, mode, cargo or id; every missing statistic is shown as `—` rather than an invented zero.
-- **No dependencies** — the viewer is a single HTML file with no CDN or network access required.
+- **No dependencies** — the viewer ships as a single HTML file with no CDN or network access required. It is built from the sources under `src/` (see [Developing the viewer](#developing-the-viewer)).
 
 ## Requirements
 
@@ -43,6 +43,8 @@ To download, use **Code → Download ZIP** on GitHub and unpack it, or clone the
 ### Viewer only
 
 You do not need the game to open an existing export. Open `index.html` directly in a browser, or host this repository with GitHub Pages and use the published URL.
+
+The published `index.html` is the finished, self-contained viewer — it has no external scripts, styles or fonts, and it works straight from `file://`. Do not edit it by hand: it is generated from `src/`.
 
 ## How to use
 
@@ -218,10 +220,34 @@ NetworkAtlas/
 │       └── main/
 │           ├── network_atlas.res.lua     # Registers the top-left mod button
 │           └── network_atlas.script.tl   # Builds and writes the map export
-├── index.html                            # Interactive 2D/3D web viewer
+├── index.html                            # Generated single-file 2D/3D viewer (do not edit)
+├── src/                                  # Viewer source — edit these instead
+│   ├── index.html                        #   Markup, with @styles / @scripts markers
+│   ├── styles/                           #   CSS, concatenated in filename order
+│   └── js/                               #   JavaScript, concatenated in filename order
+├── build/
+│   └── build.mjs                         # Inlines src/ back into index.html (zero dependencies)
+├── package.json                          # `npm run build` / `npm run check`
 ├── LICENSE
 └── README.md
 ```
+
+### Developing the viewer
+
+The viewer is authored as many small files under `src/` and inlined into the single, committed `index.html`:
+
+- `src/index.html` is the markup template. `<!-- @styles -->` and `<!-- @scripts -->` mark where the CSS and JS are injected.
+- `src/styles/*.css` and `src/js/*.js` are concatenated in **filename order**. The numeric prefixes (`000-`, `010-`, `020-`, …) exist only to control that order — the JS is plain classic script sharing one scope, not ES modules, so the built file still opens from `file://`.
+- `index.html` at the repository root is the build output and is what ships. Never edit it directly; your changes would be overwritten.
+
+Build it with Node (no packages are installed — the script has no dependencies):
+
+```
+npm run build     # or: node build/build.mjs
+npm run check     # fails if the committed index.html is stale
+```
+
+`npm run check` is the guard to run before committing: it rebuilds in memory and compares against the committed `index.html`.
 
 ## License
 
