@@ -2,15 +2,17 @@ local react = ug_require "::/gui/main/react.lua" as React
 local builtin = ug_require "::/gui/main/builtin.lua" as Builtin
 local main_mod_button_area = ug_require "::/gui/main/main_mod_button_area.tl" as MainModButtonArea
 
---- TPF3 refuses to write userdata into a folder whose name is derived from the
---- current mod id ("The directory you trying to access is not available or
---- invalid"). Try the branded names first, then the exact folder/file names
---- this mod used before the rebrand, which are known to work on this save. The
---- first one the engine accepts is kept and reported in the status line.
+--- A Transport Fever 3 update (Oct 2026) made app.saveUserdata reject any
+--- directory that is not one of its registered userdata namespaces, with
+--- "The directory you trying to access is not available or invalid". The
+--- engine only knows the namespaces towns_industries, heightmaps and
+--- mod_presets. Try those plus a plain "userdata" name, first match wins; the
+--- status line reports the folder that worked.
 local exportCandidates = {
-	{ directory = "atlas_exports", fileName = "atlas_export" },
-	{ directory = "network_atlas_exports", fileName = "network_atlas_export" },
-	{ directory = "north_map_overview", fileName = "map_export" },
+	{ directory = "userdata", fileName = "network_atlas_export" },
+	{ directory = "heightmaps", fileName = "network_atlas_export" },
+	{ directory = "mod_presets", fileName = "network_atlas_export" },
+	{ directory = "towns_industries", fileName = "network_atlas_export" },
 }
 
 --- Upper bound of the exported origin/destination cargo flows. The largest

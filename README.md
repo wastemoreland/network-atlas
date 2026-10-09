@@ -203,7 +203,7 @@ Each flow carries `from` (industry entity id), `to` (town or industry entity id)
 
 - The export format identifier is `network-atlas-map-v1`. It was renamed together with the mod; exports written by the former **Map Overview** build (`north-map-overview-map-v1`) are **not** accepted by this viewer and must be re-exported.
 - Within the same identifier the format is additive: a key the game reports nothing for is omitted, so newer exports remain readable by older viewers of the same format, and the viewer always refuses unknown identifiers rather than guessing.
-- Rebranding changed the internal mod id to `network_atlas` and the export format identifier to `network-atlas-map-v1`. The export is written under a folder in the game's userdata directory (`atlas_exports` by default; older exports used `north_map_overview`) and the status line always shows the exact path. Existing saves keep working.
+- A Transport Fever 3 update in October 2026 made `app.saveUserdata` reject any folder that is not one of the engine's registered userdata namespaces. The export now tries the namespaces the engine knows (`userdata`, `heightmaps`, `mod_presets`, `towns_industries`) and uses the first the game accepts; the status line always shows the exact path. Rebranding also changed the internal mod id to `network_atlas` and the export format identifier to `network-atlas-map-v1`.
 
 ## Project structure
 
